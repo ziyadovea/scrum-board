@@ -24,6 +24,7 @@ class User(db.Model):
             'email': self.email,
         }
 
+
 class Task(db.Model):
     __tablename__ = 'tasks'
 
