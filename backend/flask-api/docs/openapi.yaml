@@ -1,0 +1,379 @@
+openapi: 3.0.3
+info:
+  title: Scrum Board API
+  description: This is a simple REST API for Scrum Board application.
+  version: 1.0.0
+  contact:
+    name: Emil Ziyadov
+    email: ziyadovea@gmail.com
+servers:
+  - url: http://127.0.0.1:5000
+    description: Development server
+paths:
+  /register:
+    post:
+      tags:
+        - Register
+      summary: Register user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/registerRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/registerResponse"
+  /login:
+    post:
+      tags:
+        - Login
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/loginRequest'
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/accessToken"
+  /tasks:
+    get:
+      security:
+        - bearerAuth: []
+      tags:
+        - Task
+      summary: Get All Tasks For User
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/tasks"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    post:
+      security:
+        - bearerAuth: []
+      tags:
+        - Task
+      summary: Add New Task For User
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/tasksPostRequest'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/tasksPostResponse"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /tasks/{taskId}:
+    get:
+      security:
+        - bearerAuth: []
+      tags:
+        - Task
+      summary: Get Specific Task For User
+      parameters:
+        - in: path
+          name: taskId
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the task
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/task"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    patch:
+      security:
+        - bearerAuth: []
+      tags:
+        - Task
+      summary: Update Specific Task For User
+      parameters:
+        - in: path
+          name: taskId
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/taskPatchRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/taskPatchResponse"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    delete:
+      security:
+        - bearerAuth: []
+      tags:
+        - Task
+      summary: Delete Specific Task For User
+      parameters:
+        - in: path
+          name: taskId
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the task
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/taskDeleteResponse"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /tasks/{taskId}/share:
+    post:
+      security:
+        - bearerAuth: []
+      tags:
+        - Share
+      summary: Share Specific Task
+      parameters:
+        - in: path
+          name: taskId
+          schema:
+            type: integer
+          required: true
+          description: Numeric ID of the task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/shareRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/shareResponse"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /tasks/share:
+    post:
+      security:
+        - bearerAuth: []
+      tags:
+        - Share
+      summary: Share All Tasks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/shareRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/shareResponse"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /users:
+    get:
+      security:
+        - bearerAuth: [ ]
+      tags:
+        - User
+      summary: Get All Users Except Current
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/user"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    user:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: username
+        email:
+          type: string
+          example: ex@ex.com
+
+
+    registerRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          example: username
+        email:
+          type: string
+          example: ex@ex.com
+        password:
+          type: string
+          example: qwerty
+
+    accessToken:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTY3MDI3NDU4NywianRpIjoiMjQxZGI0ZDUtMzQxMC00MTQwLTkxYmUtNmNjNGM0YjFhNTdmIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6eyJ1c2VyX2lkIjozfSwibmJmIjoxNjcwMjc0NTg3LCJleHAiOjE2NzAyNzgxODd9.Gyq0YLEs7ZlezbxEDK72NS8UdMQ6EK9ZfSxOnpEb_ps'
+
+    loginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          example: ex@ex.com
+        password:
+          type: string
+          example: qwerty
+
+    task:
+      type: object
+      properties:
+        task_id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: title
+        description:
+          type: string
+          example: description
+        status:
+          type: integer
+          example: 1
+
+    tasks:
+      type: array
+      items:
+        $ref: '#/components/schemas/task'
+      example:
+        - task_id: 1
+          title: title1
+          description: description1
+          status: 1
+        - task_id: 2
+          title: title2
+          description: description2
+          status: 2
+
+    tasksPostRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          example: title
+        description:
+          type: string
+          example: description
+        status:
+          type: integer
+          example: 1
+
+    tasksPostResponse:
+      type: object
+      properties:
+        msg:
+          type: string
+          example: "task successfully added"
+
+    taskPatchRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          example: title
+        description:
+          type: string
+          example: description
+        status:
+          type: integer
+          example: 1
+
+    taskPatchResponse:
+      type: object
+      properties:
+        msg:
+          type: string
+          example: "task successfully updated"
+
+    taskDeleteResponse:
+      type: object
+      properties:
+        msg:
+          type: string
+          example: "task successfully deleted"
+
+    shareRequest:
+      type: object
+      properties:
+        to_username:
+          type: string
+          example: username1
+
+    shareResponse:
+      type: object
+      properties:
+        msg:
+          type: string
+          example: "task successfully shared"
+
+    registerResponse:
+      type: object
+      properties:
+        msg:
+          type: string
+          example: "user successfully registered"
+
+  responses:
+    UnauthorizedError:
+      description: Access token is missing or invalid
