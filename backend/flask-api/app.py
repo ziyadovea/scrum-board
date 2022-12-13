@@ -12,7 +12,7 @@ from flask_jwt_extended import (
 )
 
 from swagger import swagger_ui_blueprint, SWAGGER_URL
-from models import User, Task
+from models import User, Task, user_task
 from db import db
 
 app = Flask(__name__)
@@ -116,7 +116,7 @@ def add_task_to_user():
         if not description:
             return new_server_error('missing description', 400)
         if not status:
-            return new_server_error('missing status', 400)
+            status = 0
 
         user = User.query.filter_by(user_id=user_id).first()
         task = Task(title=title, description=description, status=status)
@@ -136,13 +136,14 @@ def get_user_task(task_id: int):
     try:
         user = get_jwt_identity()
         user_id = user['user_id']
-        tasks = User.query.filter_by(user_id=user_id).first().tasks
 
-        for task in tasks:
-            if task.task_id == task_id:
-                return task.serialize, 200
+        q = db.session.query(Task).filter_by(task_id=task_id).join(user_task).filter_by(user_id=user_id)
+        res = db.session.execute(q).first()
+        if not res:
+            return new_server_error(f'no task with id = {task_id}', 404)
 
-        return new_server_error(f'no task with id = {task_id}', 404)
+        task = res[0]
+        return task.serialize, 200
     except Exception as e:
         return new_server_error(f'unable to get task: {e}', 400)
 
@@ -161,18 +162,18 @@ def update_task(task_id: int):
 
         user = get_jwt_identity()
         user_id = user['user_id']
-        tasks = User.query.filter_by(user_id=user_id).first().tasks
 
-        for task in tasks:
-            if task.task_id == task_id:
-                task = Task.query.filter_by(task_id=task_id).first()
-                task.title = title if title else task.title
-                task.description = description if description else task.description
-                task.status = status if status else task.status
-                db.session.commit()
-                return {"msg": "task successfully updated"}, 200
+        q = db.session.query(Task).filter_by(task_id=task_id).join(user_task).filter_by(user_id=user_id)
+        res = db.session.execute(q).first()
+        if not res:
+            return new_server_error(f'no task with id = {task_id}', 404)
 
-        return new_server_error(f'no task with id = {task_id}', 404)
+        task = res[0]
+        task.title = title if title else task.title
+        task.description = description if description else task.description
+        task.status = status if status is not None else task.status
+        db.session.commit()
+        return {"msg": "task successfully updated"}, 200
     except Exception as e:
         return new_server_error(f'unable to update task: {e}', 400)
 
@@ -182,19 +183,12 @@ def update_task(task_id: int):
 @cross_origin()
 def delete_task(task_id: int):
     try:
-        jwt_user = get_jwt_identity()
-        user_id = jwt_user['user_id']
+        user = get_jwt_identity()
+        user_id = user['user_id']
 
-        user = User.query.filter_by(user_id=user_id).first()
-        tasks = user.tasks
-
-        for task in tasks:
-            if task.task_id == task_id:
-                user.tasks.remove(task)
-                db.session.commit()
-                return {"msg": "task successfully deleted"}, 200
-
-        return new_server_error(f'no task with id = {task_id}', 404)
+        Task.query.filter_by(task_id=task_id).delete()
+        db.session.commit()
+        return {"msg": "task successfully deleted"}, 200
     except Exception as e:
         return new_server_error(f'unable to delete task: {e}', 400)
 
@@ -207,22 +201,22 @@ def share_one_task(task_id: int):
         username = request.json.get('to_username', None)
         if not username:
             return new_server_error('missing to_username', 400)
-
-        user = User.query.filter_by(username=username).first()
+        receiver_user = User.query.filter_by(username=username).first()
 
         jwt_user = get_jwt_identity()
         user_id = jwt_user['user_id']
-        tasks = User.query.filter_by(user_id=user_id).first().tasks
 
-        for task in tasks:
-            if task.task_id == task_id:
-                task = Task.query.filter_by(task_id=task_id).first()
-                user.tasks.append(task)
-                db.session.add(user)
-                db.session.commit()
-                return {"msg": "task successfully shared"}, 200
+        q = db.session.query(Task).filter_by(task_id=task_id).join(user_task).filter_by(user_id=user_id)
+        res = db.session.execute(q).first()
+        if not res:
+            return new_server_error(f'no task with id = {task_id}', 404)
 
-        return new_server_error(f'no task with id = {task_id}', 404)
+        task = res[0]
+        receiver_user.tasks.append(task)
+        db.session.add(receiver_user)
+        db.session.commit()
+
+        return {"msg": "task successfully shared"}, 200
     except Exception as e:
         return new_server_error(f'unable to share task: {e}', 400)
 
@@ -235,12 +229,12 @@ def share_all_tasks():
         username = request.json.get('to_username', None)
         if not username:
             return new_server_error('missing to_username', 400)
+        receiver_user = User.query.filter_by(username=username).first()
 
         current_user = get_jwt_identity()
         current_user_id = current_user['user_id']
         tasks = User.query.filter_by(user_id=current_user_id).first().tasks
 
-        receiver_user = User.query.filter_by(username=username).first()
         receiver_user.tasks.extend(tasks)
         db.session.add(receiver_user)
         db.session.commit()

@@ -14,7 +14,7 @@ class User(db.Model):
     username = db.Column(db.String(50), unique=True, nullable=False, index=True)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(1000), nullable=False)
-    tasks = db.relationship('Task', secondary=user_task, cascade="all, delete")
+    tasks = db.relationship('Task', secondary=user_task)
 
     @property
     def serialize(self):
