@@ -3,7 +3,7 @@ from db import db
 user_task = db.Table(
     'user_task',
     db.Column('user_id', db.Integer, db.ForeignKey('users.user_id'), primary_key=True),
-    db.Column('task_id', db.Integer, db.ForeignKey('tasks.task_id'), primary_key=True),
+    db.Column('task_id', db.Integer, db.ForeignKey('tasks.task_id', ondelete="CASCADE"), primary_key=True),
 )
 
 

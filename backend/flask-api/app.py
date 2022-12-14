@@ -75,7 +75,7 @@ def login():
         if not user:
             return new_server_error('user not found!', 404)
 
-        if check_password_hash(password, user.password_hash):
+        if check_password_hash(user.password_hash, password):
             access_token = create_access_token(identity={"user_id": user.user_id})
             return {"access_token": access_token}, 200
         else:
