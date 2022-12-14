@@ -1,8 +1,6 @@
-from typing import Dict, Tuple
-
 from flask import Flask, request, send_from_directory
 from flask_cors import CORS, cross_origin
-import bcrypt
+from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.exc import IntegrityError
 from flask_jwt_extended import (
     JWTManager,
@@ -48,8 +46,8 @@ def register():
         if not password:
             return new_server_error('missing password', 400)
 
-        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-        user = User(username=username, email=email, password_hash=password_hash.decode('utf8'))
+        password_hash = generate_password_hash(password)
+        user = User(username=username, email=email, password_hash=password_hash)
         db.session.add(user)
         db.session.commit()
 
@@ -57,8 +55,8 @@ def register():
     except IntegrityError:
         db.session.rollback()
         return new_server_error('user already exists', 400)
-    except AttributeError:
-        return new_server_error('provide an username, email and password in json format in the request body', 400)
+    except AttributeError as e:
+        return new_server_error(f'provide an username, email and password in json format in the request body: {e}', 400)
 
 
 @app.route('/login', methods=['POST'])
@@ -77,13 +75,13 @@ def login():
         if not user:
             return new_server_error('user not found!', 404)
 
-        if bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode('utf-8')):
+        if check_password_hash(password, user.password_hash):
             access_token = create_access_token(identity={"user_id": user.user_id})
             return {"access_token": access_token}, 200
         else:
             return new_server_error('invalid password!', 400)
-    except AttributeError:
-        return new_server_error('provide an email and password in json format in the request body', 400)
+    except AttributeError as e:
+        return new_server_error(f'provide an email and password in json format in the request body: {e}', 400)
 
 
 @app.route('/tasks', methods=['GET'])
